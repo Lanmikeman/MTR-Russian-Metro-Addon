@@ -21,13 +21,13 @@ dependencies {
 		implementation "net.fabricmc:fabric-loader:${buildTools.getFabricVersion()}"
 		implementation "net.fabricmc.fabric-api:fabric-api:${buildTools.getFabricApiVersion()}"
 		// Prefer sibling mtr-port trees; fall back to libs/
-		def mtrRoot = file("../Minecraft-Transit-Railway")
-		def mappingDev = file("${mtrRoot}/libs/Minecraft-Mappings-fabric-${minecraftVersion}-0.0.1-dev.jar")
-		def mappingCommon = file("${mtrRoot}/libs/Minecraft-Mappings-common-0.0.1.jar")
-		def mtrAll = file("${mtrRoot}/fabric/build/libs/fabric-${mtrVersion}-all.jar")
-		if (!mappingDev.exists()) mappingDev = file("libs/Minecraft-Mappings-fabric-${minecraftVersion}-0.0.1-dev.jar")
-		if (!mappingCommon.exists()) mappingCommon = file("libs/Minecraft-Mappings-common-0.0.1.jar")
-		if (!mtrAll.exists()) mtrAll = file("libs/MTR-fabric-${minecraftVersion}-${mtrVersion}-all.jar")
+		def mtrRoot = rootProject.file("../Minecraft-Transit-Railway")
+		def mappingDev = new File(mtrRoot, "libs/Minecraft-Mappings-fabric-${minecraftVersion}-0.0.1-dev.jar")
+		def mappingCommon = new File(mtrRoot, "libs/Minecraft-Mappings-common-0.0.1.jar")
+		def mtrAll = new File(mtrRoot, "fabric/build/libs/fabric-${mtrVersion}-all.jar")
+		[mappingDev, mappingCommon, mtrAll].each { f ->
+			if (!f.exists()) throw new GradleException("Missing dependency jar: ${f.absolutePath}")
+		}
 		compileOnly files(mappingDev, mappingCommon, mtrAll)
 		def _mtrClientJar = file("${gradle.gradleUserHomeDir}/caches/fabric-loom/${minecraftVersion}/minecraft-client.jar")
 		if (_mtrClientJar.exists()) {
