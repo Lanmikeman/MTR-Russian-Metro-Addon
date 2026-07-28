@@ -2,7 +2,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 import org.mtr.mod.BuildTools
 
 plugins {
-	id "fabric-loom" version "1.10-SNAPSHOT"
+	id "net.fabricmc.fabric-loom" version "1.17-SNAPSHOT"
 }
 
 final BuildTools buildTools = new BuildTools(minecraftVersion, "fabric", project)
@@ -13,10 +13,31 @@ loom {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${minecraftVersion}"
-	mappings "net.fabricmc:yarn:${buildTools.getYarnVersion()}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${buildTools.getFabricVersion()}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${buildTools.getFabricApiVersion()}"
-	modImplementation "org.mtr:MTR-fabric:${mtrVersion}+${minecraftVersion}-server"
+	final boolean unobfuscated = minecraftVersion.startsWith("26.") || minecraftVersion.startsWith("27.")
+	if (!unobfuscated) {
+		mappings "net.fabricmc:yarn:${buildTools.getYarnVersion()}:v2"
+	}
+	if (unobfuscated) {
+		implementation "net.fabricmc:fabric-loader:${buildTools.getFabricVersion()}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${buildTools.getFabricApiVersion()}"
+		// Prefer sibling mtr-port trees; fall back to libs/
+		def mtrRoot = file("../Minecraft-Transit-Railway")
+		def mappingDev = file("${mtrRoot}/libs/Minecraft-Mappings-fabric-${minecraftVersion}-0.0.1-dev.jar")
+		def mappingCommon = file("${mtrRoot}/libs/Minecraft-Mappings-common-0.0.1.jar")
+		def mtrAll = file("${mtrRoot}/fabric/build/libs/fabric-${mtrVersion}-all.jar")
+		if (!mappingDev.exists()) mappingDev = file("libs/Minecraft-Mappings-fabric-${minecraftVersion}-0.0.1-dev.jar")
+		if (!mappingCommon.exists()) mappingCommon = file("libs/Minecraft-Mappings-common-0.0.1.jar")
+		if (!mtrAll.exists()) mtrAll = file("libs/MTR-fabric-${minecraftVersion}-${mtrVersion}-all.jar")
+		compileOnly files(mappingDev, mappingCommon, mtrAll)
+		def _mtrClientJar = file("${gradle.gradleUserHomeDir}/caches/fabric-loom/${minecraftVersion}/minecraft-client.jar")
+		if (_mtrClientJar.exists()) {
+			compileOnly files(_mtrClientJar)
+		}
+	} else {
+		modImplementation "net.fabricmc:fabric-loader:${buildTools.getFabricVersion()}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${buildTools.getFabricApiVersion()}"
+		modImplementation "org.mtr:MTR-fabric:${mtrVersion}+${minecraftVersion}-server"
+	}
 }
 
 java {
@@ -35,6 +56,10 @@ tasks.register("setupFiles") {
 		filter(ReplaceTokens, tokens: ["minecraft": minecraftVersion, "version": version])
 		rename "(.+).template.json", "\$1.json"
 	}
+}
+
+processResources {
+	dependsOn setupFiles
 }
 
 build {
